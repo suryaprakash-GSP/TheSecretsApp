@@ -1,9 +1,12 @@
 require('dotenv').config()
 const express = require('express');
+var md5 = require('md5');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
-const encrypt = require('mongoose-encryption');
+const bcrypt = require('bcrypt');
+// const encrypt = require('mongoose-encryption');
+const saltRounds = 10;
 
 
 const app = express();
@@ -23,7 +26,7 @@ const userSchema = new mongoose.Schema({
 });
 
 
-userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
+// userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
 
 const User = new mongoose.model("User", userSchema);
 
@@ -48,15 +51,19 @@ app.get("/submit", (req, res) => {
     res.render("submit");
 });
 app.post("/register", (req, res) => {
-    const email = req.body.username;
-    const password = req.body.password;
 
-    const newUser = new User({
-        email,
-        password
+    bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
+        // Store hash in your password DB.
+        const email = req.body.username;
+        const password = hash;
+        const newUser = new User({
+            email,
+            password
+        });
+        newUser.save();
+        res.redirect("secrets");
     });
-    newUser.save();
-    res.redirect("secrets");
+
 
 });
 
@@ -67,11 +74,16 @@ app.post("/login", (req, res) => {
 
         //    console.log(item);
         if (foundUser) {
-            if (foundUser.password == password)
-                res.redirect('secrets');
+            bcrypt.compare(password, d = foundUser.password, function (err, result) {
+                if (result == true) {
+                    res.redirect('secrets');
+
+                }
+            });
+
         }
         else {
-            alert("Paswword or usernams Incorrect");
+            // alert("Paswword or usernams Incorrect");
 
         }
 
